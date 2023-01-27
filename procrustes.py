@@ -8,6 +8,7 @@ import optparse
 import collections
 import trees
 import functools
+import xml.etree.ElementTree as ET
 
 spacepenalty = 0.5
 
@@ -80,6 +81,48 @@ def levenshtein(s,t):
         return align
     else:
         raise EditFailure()
+
+class XML(object):
+    def __init__(self, s):
+        self.xml = ET.fromstring(s)
+
+    def __str__(self):
+        return ET.tostring(self.xml, encoding='unicode', method='xml')
+
+    def getchars(self):
+        return ET.tostring(self.xml, encoding='unicode', method='text')
+
+    def project(self, forcechars, charalign):
+        # Inserted characters arbitrarily go to the right, except for
+        # appended characters, which go to the left.
+
+        sub = []
+        si = di = 0
+        for ai, a in enumerate(charalign):
+            while si < a[0]:
+                sub.append('')
+                si += 1
+            sub.append(forcechars[di:a[1]+1])
+            si += 1
+            di = a[1]+1
+        while si < len(self.getchars()):
+            sub.append('')
+            si += 1
+        sub[-1] += forcechars[di:]
+
+        def visit(node, si):
+            n = len(node.text)
+            node.text = ''.join(sub[si:si+n])
+            si += n
+            for child in node:
+                si = visit(child, si)
+            if node.tail is not None:
+                n = len(node.tail)
+                node.tail = ''.join(sub[si:si+n])
+                si += n
+            return si
+
+        visit(self.xml, 0)
 
 class Tree(object):
     def __init__(self, s):
@@ -172,17 +215,21 @@ if __name__ == "__main__":
     forcetokfile = open(args[0])
 
     for li, (inline, forceline) in enumerate(zip(sys.stdin, forcetokfile)):
-        print(inline)
         if opts.mode == "align":
             inlabel = Alignment(inline, opts.english)
         elif opts.mode == "tree":
             inlabel = Tree(inline)
+        elif opts.mode == "xml":
+            inlabel = XML(inline)
         forceline = " ".join(forceline.split())
 
         align = levenshtein(inlabel.getchars(), forceline)
         if opts.verbose:
+            print(inlabel, file=sys.stderr)
+            print(inlabel.getchars(), file=sys.stderr)
+            print(forceline, file=sys.stderr)
             for si, ti in align:
-                sys.stderr.write("[%s]-[%s]\n" % (inlabel.getchars()[si], forceline[ti]))
+                print(f'[{inlabel.getchars()[si]}]-[{forceline[ti]}]', file=sys.stderr)
 
         inlabel.project(forceline, align)
         if inlabel.getchars() != forceline:

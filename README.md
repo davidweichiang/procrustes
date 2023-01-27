@@ -10,12 +10,15 @@ Usage:
 
     procrustes.py -m <mode> forcefile < infile
 
-It currently has two modes. In both modes, `forcefile` is the text
-with the target tokenization.
+It currently has three modes. In all modes, `forcefile` is the text
+with the target tokenization, and `infile` and `forcefile` must have
+the same number of lines.
 
 - In tree mode (default or `-m tree`), `infile` should contain
   Treebank-style trees, one per line. Not implemented. (It must have
   been implemented in a previous version, now lost.)
+
+- In XML mode (`-m xml`), `infile` should be in XML.
   
 - In alignment mode (`-m align`) should have the format
 
