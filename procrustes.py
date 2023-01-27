@@ -3,35 +3,40 @@
 # usage: procrustes.py <force-tok> < <input-tagged> > <output-tagged>
 # imposes tokenization of <force-tok> onto <input-tagged>
 
-import sys, codecs
-sys.stdout = codecs.getwriter('utf-8')(sys.stdout)
-sys.stderr = codecs.getwriter('utf-8')(sys.stderr)
+import sys
 import optparse
-import itertools, collections
+import collections
+import trees
+import functools
 
 spacepenalty = 0.5
 
 class EditFailure(Exception):
     pass
 
+@functools.total_ordering
 class Item(object):
     def __init__(self, cost=0., ant=None, align=None):
         self.cost = cost
         self.align = align or []
         self.ant = ant
 
-    def __cmp__(self, other):
-        return cmp(self.cost, other.cost)
+    def __eq__(self, other):
+        return self.cost == other.cost
+    def __ne__(self, other):
+        return self.cost != other.cost
+    def __lt__(self, other):
+        return self.cost < other.cost
 
 def levenshtein(s,t):
     """http://en.wikipedia.org/wiki/Levenshtein_distance"""
     m = len(s)
     n = len(t)
     # d[i][j] says how to get t[:j] from s[:i]
-    d = [[None for j in xrange(n+1)] for i in xrange(m+1)]
+    d = [[None for j in range(n+1)] for i in range(m+1)]
     d[0][0] = Item()
-    for i in xrange(m+1):
-        for j in xrange(n+1):
+    for i in range(m+1):
+        for j in range(n+1):
             if i == j == 0: continue
 
             cands = []
@@ -78,11 +83,11 @@ def levenshtein(s,t):
 
 class Tree(object):
     def __init__(self, s):
-        self.t = tree.str_to_tree(s)
-        self.chars = " ".join(self.t.frontier())
+        self.t = trees.Tree.from_str(s)
+        self.chars = " ".join(n.label for n in self.t.leaves())
         i = 0
-        for node in t.bottomup():
-            if node.isleaf():
+        for node in self.t.bottomup():
+            if len(node.children) == 0:
                 if i > 0:
                     i += 1 # space
                 node.span = (i,i+len(node.label))
@@ -95,9 +100,9 @@ class Tree(object):
 
     def getchars(self):
         return self.chars
-
+    
     def project(self, forcechars, charalign):
-        pass
+        raise NotImplementedError()
 
 class Alignment(object):
     def __init__(self, s, english=False):
@@ -121,7 +126,7 @@ class Alignment(object):
             if fi > 0:
                 self.fchars.append(" ")
             for ei in align[fi]:
-                for fci in xrange(len(self.fchars), len(self.fchars)+len(fword)):
+                for fci in range(len(self.fchars), len(self.fchars)+len(fword)):
                     self.align[fci].add(ei)
             self.fchars.extend(fword)
 
@@ -133,7 +138,7 @@ class Alignment(object):
             if fi > 0:
                 fci += 1
             a = set()
-            for fcj in xrange(fci, fci+len(fword)):
+            for fcj in range(fci, fci+len(fword)):
                 a |= self.align[fcj]
             align.extend((fi,ei) for ei in a)
             fci += len(fword)
@@ -164,15 +169,14 @@ if __name__ == "__main__":
     if len(args) != 1:
         optparser.error("force-tok argument required (use -h option for help)")
 
-    forcetokfile = file(args[0])
+    forcetokfile = open(args[0])
 
-    for li, (inline, forceline) in enumerate(itertools.izip(sys.stdin, forcetokfile)):
-        inline = inline.decode('utf-8')
+    for li, (inline, forceline) in enumerate(zip(sys.stdin, forcetokfile)):
+        print(inline)
         if opts.mode == "align":
             inlabel = Alignment(inline, opts.english)
         elif opts.mode == "tree":
             inlabel = Tree(inline)
-        forceline = forceline.decode('utf-8')
         forceline = " ".join(forceline.split())
 
         align = levenshtein(inlabel.getchars(), forceline)
@@ -182,5 +186,5 @@ if __name__ == "__main__":
 
         inlabel.project(forceline, align)
         if inlabel.getchars() != forceline:
-            raise EditFailure()
-        print unicode(inlabel)
+            raise EditFailure(f'{inlabel.getchars()} != {forceline}')
+        print(inlabel)
