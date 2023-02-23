@@ -2,10 +2,13 @@ from typing import List
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
+from utils.modes.alignment import Alignment
 
-class XMLAlignment(object):
-    def __init__(self, s):
-        self.xml = ElementTree.fromstring(s)
+
+class XMLAlignment(Alignment):
+    def __init__(self, source_line: str, **alignment_kwargs):
+        super().__init__()
+        self.xml = ElementTree.fromstring(source_line)
 
     def __str__(self):
         return ElementTree.tostring(self.xml, encoding='unicode', method='xml')

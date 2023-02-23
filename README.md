@@ -1,5 +1,8 @@
 # Procrustes
 
+**Note: the below, due to refactoring the interface, is outdated to some extent. 
+It will be rewritten once changes are complete.**
+
 Procrustes is a simple script for projecting annotations of various
 kinds from one text to another highly similar text (e.g., with
 different tokenization or differences in punctuation or encoding of

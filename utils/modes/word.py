@@ -1,8 +1,11 @@
 from collections import defaultdict
 
+from utils.modes.alignment import Alignment
 
-class WordAlignment(object):
-    def __init__(self, source_line: str, is_flipped: bool = False):
+
+class WordAlignment(Alignment):
+    def __init__(self, source_line: str, is_flipped: bool = False, **alignment_kwargs):
+        super().__init__()
         self.is_flipped = is_flipped
 
         fields = source_line.split("\t")

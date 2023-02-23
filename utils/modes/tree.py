@@ -1,9 +1,11 @@
 from utils.algorithms.data_structures.tree import Tree
+from utils.modes.alignment import Alignment
 
 
-class TreeAlignment(object):
-    def __init__(self, s):
-        self.tree = Tree.from_str(s)
+class TreeAlignment(Alignment):
+    def __init__(self, source_line: str, **alignment_kwargs):
+        super().__init__()
+        self.tree = Tree.from_str(source_line)
         self.characters = " ".join(n.label for n in self.tree.leaves())
         label_index: int = 0
         for node in self.tree.bottomup():
