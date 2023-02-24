@@ -1,4 +1,5 @@
 from collections import defaultdict
+from typing import List, Tuple
 
 from utils.modes.alignment import Alignment
 
@@ -35,7 +36,7 @@ class WordAlignment(Alignment):
             self.source_characters.extend(source_word)
 
     def __str__(self):
-        # Convert back to word alignment (on French side)
+        # Convert back to word alignment (on source side)
         alignment = []
         source_character_index: int = 0
         for source_index, source_word in enumerate(self.source_words):
@@ -63,10 +64,10 @@ class WordAlignment(Alignment):
     def get_characters(self):
         return self.source_characters
 
-    def project(self, target_spaced_line, character_alignment):
+    def project(self, target_spaced_line: str, character_alignment: List[Tuple[int, int]]):
         alignment = defaultdict(set)
-        for fci, tci in character_alignment:
-            alignment[tci] |= self.alignment[fci]
+        for source_character_index, target_character_index in character_alignment:
+            alignment[target_character_index] |= self.alignment[source_character_index]
         self.alignment = alignment
         self.source_characters = target_spaced_line
         self.source_words = target_spaced_line.split()

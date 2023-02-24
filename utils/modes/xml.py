@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Tuple
 from xml.etree import ElementTree
 from xml.etree.ElementTree import Element
 
@@ -16,32 +16,32 @@ class XMLAlignment(Alignment):
     def get_characters(self):
         return ElementTree.tostring(self.xml, encoding='unicode', method='text')
 
-    def project(self, target_spaced_line, character_alignment):
+    def project(self, target_spaced_line, character_alignment: List[Tuple[int, int]]):
         # Inserted characters arbitrarily go to the right, except for appended characters, which go to the left.
         subsequences: List[str] = []
-        si = di = 0
+        source_index = target_index = 0
         for alignment_index, alignment in enumerate(character_alignment):
-            while si < alignment[0]:
+            while source_index < alignment[0]:
                 subsequences.append('')
-                si += 1
-            subsequences.append(target_spaced_line[di:(alignment[1] + 1)])
-            si += 1
-            di = alignment[1] + 1
-        while si < len(self.get_characters()):
+                source_index += 1
+            subsequences.append(target_spaced_line[target_index:(alignment[1] + 1)])
+            source_index += 1
+            target_index = alignment[1] + 1
+        while source_index < len(self.get_characters()):
             subsequences.append('')
-            si += 1
-        subsequences[-1] += target_spaced_line[di:]
+            source_index += 1
+        subsequences[-1] += target_spaced_line[target_index:]
 
-        def visit(node: Element, si):
+        def visit(node: Element, source_index: int):
             node_length: int = len(node.text)
-            node.text = ''.join(subsequences[si:(si + node_length)])
-            si += node_length
+            node.text = ''.join(subsequences[source_index:(source_index + node_length)])
+            source_index += node_length
             for child in node:
-                si = visit(child, si)
+                source_index = visit(child, source_index)
             if node.tail is not None:
                 tail_length: int = len(node.tail)
-                node.tail = ''.join(subsequences[si:(si + tail_length)])
-                si += tail_length
-            return si
+                node.tail = ''.join(subsequences[source_index:(source_index + tail_length)])
+                source_index += tail_length
+            return source_index
 
         visit(self.xml, 0)
