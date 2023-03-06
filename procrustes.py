@@ -5,7 +5,7 @@ from functools import partial
 from os import listdir, path
 from multiprocessing import Pool
 from sys import stderr
-from typing import Any, Dict, List, TextIO, Tuple, Type, Union
+from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union
 
 from utils.algorithms.edit_distance import levenshtein
 from utils.algorithms.data_structures.exceptions import EditFailure
@@ -13,6 +13,8 @@ from utils.modes.alignment import Alignment
 from utils.modes.tree import TreeAlignment
 from utils.modes.word import WordAlignment
 from utils.modes.xml import XMLAlignment
+from utils.segmentation.interface import get_segmentation_function
+from utils.zipping.interface import get_zip_function
 
 
 def get_alignment_type(alignment_name: str) -> Type[Alignment]:
@@ -41,7 +43,8 @@ def align_files(source_filepath: str, target_filepath: str, output_filepath: Uni
     target_file: TextIO = open(target_filepath, mode="r", encoding="utf-8")
     output_file: TextIO = open(output_filepath, mode="w+", encoding="utf-8") if output_filepath is not None else None
 
-    for line_index, (source_line, target_line) in enumerate(zip(source_file, target_file)):
+    zip_function: Callable = kwargs["zipper"]
+    for line_index, (source_line, target_line) in enumerate(zip_function(source_file, target_file)):
         # TODO: what's the correct type annotation for alignment_type here?
         source_label = alignment_type(source_line, **alignment_kwargs)   # type: ignore
         target_spaced_line: str = " ".join(target_line.split())
@@ -77,7 +80,9 @@ if __name__ == "__main__":
     parser.add_argument("--mode", "-m", type=get_alignment_type, default=WordAlignment, help="input/output mode")
     parser.add_argument("--output", type=str, default=None)
     parser.add_argument("--processes", type=int, default=1)
+    parser.add_argument("--segmenter", type=get_segmentation_function, default=None)
     parser.add_argument("--verbose", action="store_true", default=False, help="verbose output")
+    parser.add_argument("--zipper", type=get_zip_function, default="line")
     args: Namespace = parser.parse_args()
 
     if not path.exists(args.source):
@@ -101,8 +106,11 @@ if __name__ == "__main__":
 
     combined_filepaths: List[Tuple[str, str, str]] = list(zip(source_filepaths, target_filepaths, output_filepaths))
     alignment_class: Type[Alignment] = args.mode
-    alignment_class_kwargs: Dict[str, Any] = {"is_flipped": args.flip}
-    other_kwargs: Dict[str, Any] = {"verbose": args.verbose}
+    alignment_class_kwargs: Dict[str, Any] = {
+        "is_flipped": args.flip,
+        "segmentation_function": args.segmenter
+    }
+    other_kwargs: Dict[str, Any] = {"verbose": args.verbose, "zipper": args.zipper}
 
     if args.processes > 1:
         with Pool(processes=args.processes) as pool:
