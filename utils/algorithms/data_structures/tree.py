@@ -1,4 +1,4 @@
-from re import compile, Pattern
+from re import compile
 
 from utils.algorithms.data_structures.exceptions import RootDeletedException
 from utils.algorithms.data_structures.node import Node, PrettyPrinter
@@ -15,9 +15,9 @@ class Tree:
         root_printer: PrettyPrinter = self.root._pretty_print()
         return str(root_printer)
 
-    interior_node: Pattern = compile(r"\s*\(([^\s)]*)")
-    close_brace: Pattern = compile(r"\s*\)")
-    leaf_node: Pattern = compile(r'\s*([^\s)]+)')
+    interior_node = compile(r"\s*\(([^\s)]*)")
+    close_brace = compile(r"\s*\)")
+    leaf_node = compile(r'\s*([^\s)]+)')
 
     @staticmethod
     def _scan_tree(s):
