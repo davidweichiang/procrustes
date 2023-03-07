@@ -7,6 +7,7 @@ from multiprocessing import Pool
 from sys import stderr
 from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union
 
+from natsort import natsorted
 from numpy import finfo, iinfo
 
 from utils.algorithms.data_structures.exceptions import EditFailure
@@ -37,6 +38,7 @@ def gather_filepaths(directory_path: str, file_iterator_path: str) -> List[str]:
     for filename in listdir(file_iterator_path):
         new_filepath: str = f"{directory_path}/{filename}"
         filepaths.append(new_filepath)
+    filepaths = natsorted(filepaths)
     return filepaths
 
 
