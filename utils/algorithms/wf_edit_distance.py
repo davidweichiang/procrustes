@@ -2,7 +2,6 @@ from typing import Callable, List, Sequence, Tuple
 
 from numpy import argmin, dtype, zeros
 from numpy.typing import NDArray, DTypeLike
-from tqdm import tqdm
 
 from utils.algorithms.options.edits import EditOperation, EDIT_OPERATIONS
 
@@ -45,7 +44,7 @@ def calculate_minimum_edit_distance(source: Sequence[str], destination: Sequence
         -> Tuple[NDArray[float], NDArray[int]]:
     chart: NDArray[float] = initialize_chart(source, destination, cost, data_type)
     pointer_table: NDArray[int] = initialize_pointer_table(source, destination)
-    for i in tqdm(range(1, len(source) + 1), desc="Levenshtein Outer Loop:"):
+    for i in range(1, len(source) + 1):
         for j in range(1, len(destination) + 1):
             compute_edit_cost(source, destination, chart, pointer_table, cost, i, j)
 
