@@ -7,8 +7,11 @@ from multiprocessing import Pool
 from sys import stderr
 from typing import Any, Callable, Dict, List, TextIO, Tuple, Type, Union
 
-from utils.algorithms.edit_distance import levenshtein
+from numpy import finfo, iinfo
+
 from utils.algorithms.data_structures.exceptions import EditFailure
+from utils.algorithms.options.cost_functions import ENTRY_SIZES, get_cost_function
+from utils.algorithms.wf_edit_distance import calculate_minimum_edit_distance, collect_alignment_path, PointerTable
 from utils.modes.alignment import Alignment
 from utils.modes.tree import TreeAlignment
 from utils.modes.word import WordAlignment
@@ -44,11 +47,22 @@ def align_files(source_filepath: str, target_filepath: str, output_filepath: Uni
     output_file: TextIO = open(output_filepath, mode="w+", encoding="utf-8") if output_filepath is not None else None
 
     zip_function: Callable = kwargs["zipper"]
+    ed_cost_function: Callable = kwargs["cost_function"]
+    data_type_base: str = kwargs["data_type"]
     for line_index, (source_line, target_line) in enumerate(zip_function(source_file, target_file)):
         # TODO: what's the correct type annotation for alignment_type here?
         source_label = alignment_type(source_line, **alignment_kwargs)   # type: ignore
         target_spaced_line: str = " ".join(target_line.split())
-        line_alignment: List[Tuple[int, int]] = levenshtein(source_label.get_characters(), target_spaced_line)
+
+        data_type_size: str = get_entry_size(data_type_base, source_label.get_characters(), target_spaced_line)
+        full_data_type: str = data_type_base + data_type_size
+
+        pointer_table: PointerTable = {}
+        edit_distance, d_table = calculate_minimum_edit_distance(
+            source_label.get_characters(), target_spaced_line, ed_cost_function, full_data_type, pointer_table
+        )
+        line_alignment: List[Tuple[int, int]] = collect_alignment_path(d_table, pointer_table)
+
         if kwargs["verbose"] is True:
             print(f"SOURCE LABEL: {source_label}\n", file=stderr)
             print(f"SOURCE LABEL CHARACTERS: {source_label.get_characters()}\n", file=stderr)
@@ -72,10 +86,31 @@ def align_files(source_filepath: str, target_filepath: str, output_filepath: Uni
     output_file.close()
 
 
+def get_entry_size(base_type: str, source_text: str, target_text: str) -> str:
+    max_length: int = max(len(source_text), len(target_text))
+    if base_type == "float":
+        info_function: Callable = finfo
+    elif base_type == "int":
+        info_function = iinfo
+    else:
+        raise ValueError(f"Unrecognized base type <{base_type}>.")
+
+    for entry_size in ENTRY_SIZES:
+        # Since the edit distance can be at most max_length for Levenshtein edit distance,
+        #   we can compute the needed data size for the d_table to support smaller or larger data comparisons.
+        if max_length < info_function(base_type + entry_size).max:
+            data_entry_size: str = entry_size
+            break
+    else:
+        raise ValueError(f"The maximum document length, <{max_length}>, is too large to be supported.")
+    return data_entry_size
+
+
 if __name__ == "__main__":
     parser: ArgumentParser = ArgumentParser()
     parser.add_argument("source", type=str)
     parser.add_argument("target", type=str)
+    parser.add_argument("--cost-function", type=get_cost_function, default="procrustes-levenshtein")
     parser.add_argument("--flip", action="store_true", default=False, help="operate on target side instead of source")
     parser.add_argument("--mode", "-m", type=get_alignment_type, default=WordAlignment, help="input/output mode")
     parser.add_argument("--output", type=str, default=None)
@@ -110,7 +145,14 @@ if __name__ == "__main__":
         "is_flipped": args.flip,
         "segmentation_function": args.segmenter
     }
-    other_kwargs: Dict[str, Any] = {"verbose": args.verbose, "zipper": args.zipper}
+
+    cost_function, data_type = args.cost_function
+    other_kwargs: Dict[str, Any] = {
+        "cost_function": cost_function,
+        "data_type": data_type,
+        "verbose": args.verbose,
+        "zipper": args.zipper
+    }
 
     if args.processes > 1:
         with Pool(processes=args.processes) as pool:
