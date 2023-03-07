@@ -12,7 +12,7 @@ from numpy import finfo, iinfo
 
 from utils.algorithms.data_structures.exceptions import EditFailure
 from utils.algorithms.options.cost_functions import ENTRY_SIZES, get_cost_function
-from utils.algorithms.wf_edit_distance import calculate_minimum_edit_distance, collect_alignment_path, PointerTable
+from utils.algorithms.wf_edit_distance import calculate_minimum_edit_distance, collect_alignment_path
 from utils.modes.alignment import Alignment
 from utils.modes.tree import TreeAlignment
 from utils.modes.word import WordAlignment
@@ -59,9 +59,8 @@ def align_files(source_filepath: str, target_filepath: str, output_filepath: Uni
         data_type_size: str = get_entry_size(data_type_base, source_label.get_characters(), target_spaced_line)
         full_data_type: str = data_type_base + data_type_size
 
-        pointer_table: PointerTable = {}
-        edit_distance, d_table = calculate_minimum_edit_distance(
-            source_label.get_characters(), target_spaced_line, ed_cost_function, full_data_type, pointer_table
+        d_table, pointer_table = calculate_minimum_edit_distance(
+            source_label.get_characters(), target_spaced_line, ed_cost_function, full_data_type
         )
         line_alignment: List[Tuple[int, int]] = collect_alignment_path(d_table, pointer_table)
 

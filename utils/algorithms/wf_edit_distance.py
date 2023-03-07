@@ -1,12 +1,10 @@
-from typing import Callable, Dict, List, Sequence, Tuple, Union
+from typing import Callable, List, Sequence, Tuple
 
 from numpy import argmin, dtype, zeros
 from numpy.typing import NDArray, DTypeLike
+from tqdm import tqdm
 
 from utils.algorithms.options.edits import EditOperation, EDIT_OPERATIONS
-
-
-PointerTable = Dict[Tuple[int, int], EditOperation]
 
 
 # We initialize the chart in accordance with Wagner and Fischer's Algorithm X.
@@ -17,6 +15,13 @@ def initialize_chart(source: Sequence[str], destination: Sequence[str], cost: Ca
     new_chart: NDArray[float] = zeros(chart_size, data_type)
     fill_edges(source, destination, new_chart, cost)
     return new_chart
+
+
+def initialize_pointer_table(source: Sequence[str], destination: Sequence[str]) -> NDArray[int]:
+    pointer_table_size: Tuple[int, int] = (len(source) + 1, len(destination) + 1)
+    data_type: DTypeLike = dtype("int8")
+    new_pointer_table: NDArray[int] = zeros(pointer_table_size, data_type)
+    return new_pointer_table
 
 
 def fill_edges(source: Sequence, destination: Sequence, chart: NDArray[float], cost: Callable,
@@ -36,20 +41,19 @@ def fill_columns(destination: Sequence, chart: NDArray[float], cost: Callable, c
 
 
 # We perform the main edit distance algorithm presented in Fischer and Wagner 1974.
-def calculate_minimum_edit_distance(source: Sequence[str], destination: Sequence[str], cost: Callable, data_type: str,
-                                    pointer_table: Union[PointerTable, None] = None) \
-        -> Tuple[float, NDArray[float]]:
+def calculate_minimum_edit_distance(source: Sequence[str], destination: Sequence[str], cost: Callable, data_type: str) \
+        -> Tuple[NDArray[float], NDArray[int]]:
     chart: NDArray[float] = initialize_chart(source, destination, cost, data_type)
-    for i in range(1, len(source) + 1):
+    pointer_table: NDArray[int] = initialize_pointer_table(source, destination)
+    for i in tqdm(range(1, len(source) + 1), desc="Levenshtein Outer Loop:"):
         for j in range(1, len(destination) + 1):
-            compute_edit_cost(source, destination, chart, cost, i, j, pointer_table)
+            compute_edit_cost(source, destination, chart, pointer_table, cost, i, j)
 
-    minimized_edit_distance: NDArray[float] = chart[len(source), len(destination)]
-    return minimized_edit_distance.item(), chart
+    return chart, pointer_table
 
 
-def compute_edit_cost(source: Sequence, destination: Sequence, chart: NDArray[float], cost: Callable,
-                      row: int, column: int, pointer_table: Union[PointerTable, None] = None):
+def compute_edit_cost(source: Sequence, destination: Sequence, chart: NDArray[float], pointer_table: NDArray[int],
+                      cost: Callable, row: int, column: int):
     substitution_cost: int = chart[row - 1, column - 1] + \
         cost(source[row - 1], destination[column - 1], EditOperation.SUBSTITUTE)
     deletion_cost: int = chart[row - 1, column] + cost(source[row - 1], None, EditOperation.DELETE)
@@ -59,11 +63,10 @@ def compute_edit_cost(source: Sequence, destination: Sequence, chart: NDArray[fl
     minimum_cost_index: int = argmin(costs).item()
     chart[row, column] = costs[minimum_cost_index]
 
-    if pointer_table is not None:
-        pointer_table[(row, column)] = EDIT_OPERATIONS[minimum_cost_index]
+    pointer_table[(row, column)] = EDIT_OPERATIONS[minimum_cost_index]
 
 
-def collect_alignment_path(d_table: NDArray[float], pointer_table: PointerTable) -> List[Tuple[int, int]]:
+def collect_alignment_path(d_table: NDArray[float], pointer_table: NDArray[int]) -> List[Tuple[int, int]]:
     alignment_path: List[Tuple[int, int]] = []
 
     goal_entry: Tuple[int, int] = d_table.shape
@@ -74,19 +77,19 @@ def collect_alignment_path(d_table: NDArray[float], pointer_table: PointerTable)
     edge_index: int = 0
     while edge_index not in current_entry:
         current_row, current_column = current_entry
-        if pointer_table.get(current_entry, None) is not None:
-            if pointer_table[current_entry] == EditOperation.SUBSTITUTE:
+        if pointer_table[current_row][current_column] != 0:
+            if pointer_table[current_row][current_column] == EditOperation.SUBSTITUTE:
                 previous_row: int = current_row - 1
                 previous_column: int = current_column - 1
                 alignment_path.insert(0, (previous_row, previous_column))
-            elif pointer_table[current_entry] == EditOperation.DELETE:
+            elif pointer_table[current_row][current_column] == EditOperation.DELETE:
                 previous_row: int = current_row - 1
                 previous_column: int = current_column
-            elif pointer_table[current_entry] == EditOperation.INSERT:
+            elif pointer_table[current_row][current_column] == EditOperation.INSERT:
                 previous_row: int = current_row
                 previous_column: int = current_column - 1
             else:
-                raise ValueError(f"The edit operation <{pointer_table[current_entry]}> is not supported.")
+                raise ValueError(f"The edit operation <{pointer_table[current_row][current_column]}> is not supported.")
             current_entry = (previous_row, previous_column)
         else:
             raise ValueError(f"A pointer was not stored for <{current_entry}>.")
