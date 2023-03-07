@@ -2,7 +2,6 @@ from typing import Callable, Dict, List, Sequence, Tuple, Union
 
 from numpy import argmin, dtype, zeros
 from numpy.typing import NDArray, DTypeLike
-from tqdm import tqdm
 
 from utils.algorithms.options.edits import EditOperation, EDIT_OPERATIONS
 
