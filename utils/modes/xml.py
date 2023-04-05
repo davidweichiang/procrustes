@@ -20,7 +20,7 @@ class XMLAlignment(Alignment):
     def get_characters(self):
         return ElementTree.tostring(self.xml, encoding='unicode', method='text')
 
-    def project(self, target_spaced_line, character_alignment: List[Tuple[int, int]]):
+    def project(self, revised_target_line: str, character_alignment: List[Tuple[int, int]]):
         # Inserted characters arbitrarily go to the right, except for appended characters, which go to the left.
         subsequences: List[str] = []
         source_index = target_index = 0
@@ -28,7 +28,7 @@ class XMLAlignment(Alignment):
             while source_index < alignment[0]:
                 subsequences.append('')
                 source_index += 1
-            subsequences.append(target_spaced_line[target_index:(alignment[1] + 1)])
+            subsequences.append(revised_target_line[target_index:(alignment[1] + 1)])
             source_index += 1
             target_index = alignment[1] + 1
 
@@ -36,7 +36,7 @@ class XMLAlignment(Alignment):
             subsequences.append('')
             source_index += 1
 
-        subsequences[-1] += target_spaced_line[target_index:]
+        subsequences[-1] += revised_target_line[target_index:]
 
         def visit(node: Element, source_text_index: int):
             node_length: int = len(node.text)

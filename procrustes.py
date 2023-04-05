@@ -13,6 +13,7 @@ from numpy import finfo, iinfo
 from utils.algorithms.data_structures.exceptions import EditFailure
 from utils.algorithms.options.cost_functions import ENTRY_SIZES, get_cost_function
 from utils.algorithms.wf_edit_distance import calculate_minimum_edit_distance, collect_alignment_path
+from utils.cli.constants import HelpMessage
 from utils.modes.alignment import Alignment
 from utils.modes.tree import TreeAlignment
 from utils.modes.word import WordAlignment
@@ -52,30 +53,29 @@ def align_files(source_filepath: str, target_filepath: str, output_filepath: Uni
     ed_cost_function: Callable = kwargs["cost_function"]
     data_type_base: str = kwargs["data_type"]
     for line_index, (source_line, target_line) in enumerate(zip_function(source_file, target_file)):
-        # TODO: what's the correct type annotation for alignment_type here?
         source_label = alignment_type(source_line, **alignment_kwargs)   # type: ignore
-        target_spaced_line: str = " ".join(target_line.split())
+        revised_target_line: str = " ".join(target_line.split())
 
-        data_type_size: str = get_entry_size(data_type_base, source_label.get_characters(), target_spaced_line)
+        data_type_size: str = get_entry_size(data_type_base, source_label.get_characters(), revised_target_line)
         full_data_type: str = data_type_base + data_type_size
 
         d_table, pointer_table = calculate_minimum_edit_distance(
-            source_label.get_characters(), target_spaced_line, ed_cost_function, full_data_type
+            source_label.get_characters(), revised_target_line, ed_cost_function, full_data_type
         )
         line_alignment: List[Tuple[int, int]] = collect_alignment_path(d_table, pointer_table)
 
         if kwargs["verbose"] is True:
             print(f"SOURCE LABEL: {source_label}\n", file=stderr)
             print(f"SOURCE LABEL CHARACTERS: {source_label.get_characters()}\n", file=stderr)
-            print(f"TARGET LINE: {target_spaced_line}\n", file=stderr)
+            print(f"TARGET LINE: {revised_target_line}\n", file=stderr)
             for source_index, target_index in line_alignment:
                 source_match: str = source_label.get_characters()[source_index]
-                target_match: str = target_spaced_line[target_index]
+                target_match: str = revised_target_line[target_index]
                 print(f"[{source_match}]-[{target_match}]", file=stderr)
 
-        source_label.project(target_spaced_line, line_alignment)
-        if source_label.get_characters() != target_spaced_line:
-            raise EditFailure(f'{source_label.get_characters()} != {target_spaced_line}')
+        source_label.project(revised_target_line, line_alignment)
+        if source_label.get_characters() != revised_target_line:
+            raise EditFailure(f'{source_label.get_characters()} != {revised_target_line}')
 
         if output_file is not None:
             output_file.write(f"{source_label}")
@@ -109,16 +109,19 @@ def get_entry_size(base_type: str, source_text: str, target_text: str) -> str:
 
 if __name__ == "__main__":
     parser: ArgumentParser = ArgumentParser()
-    parser.add_argument("source", type=str)
-    parser.add_argument("target", type=str)
-    parser.add_argument("--cost-function", type=get_cost_function, default="procrustes-levenshtein")
-    parser.add_argument("--flip", action="store_true", default=False, help="operate on target side instead of source")
-    parser.add_argument("--mode", "-m", type=get_alignment_type, default=WordAlignment, help="input/output mode")
-    parser.add_argument("--output", type=str, default=None)
-    parser.add_argument("--processes", type=int, default=1)
-    parser.add_argument("--segmenter", type=get_segmentation_function, default=None)
-    parser.add_argument("--verbose", action="store_true", default=False, help="verbose output")
-    parser.add_argument("--zipper", type=get_zip_function, default="line")
+    parser.add_argument("source", type=str, help=HelpMessage.SOURCE.value)
+    parser.add_argument("target", type=str, help=HelpMessage.TARGET.value)
+    parser.add_argument(
+        "--cost-function", type=get_cost_function, default="procrustes-levenshtein",
+        help=HelpMessage.COST_FUNCTION.value
+    )
+    parser.add_argument("--flip", action="store_true", default=False, help=HelpMessage.FLIP.value)
+    parser.add_argument("--mode", "-m", type=get_alignment_type, default=WordAlignment, help=HelpMessage.MODE.value)
+    parser.add_argument("--output", type=str, default=None, help=HelpMessage.OUTPUT.value)
+    parser.add_argument("--processes", type=int, default=1, help=HelpMessage.PROCESSES.value)
+    parser.add_argument("--segmenter", type=get_segmentation_function, default=None, help=HelpMessage.SEGMENTER.value)
+    parser.add_argument("--verbose", action="store_true", default=False, help=HelpMessage.VERBOSE.value)
+    parser.add_argument("--zipper", type=get_zip_function, default="line", help=HelpMessage.ZIPPER.value)
     args: Namespace = parser.parse_args()
 
     if not path.exists(args.source):

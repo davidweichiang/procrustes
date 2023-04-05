@@ -11,5 +11,5 @@ class Alignment:
         return NotImplementedError
 
     @abstractmethod
-    def project(self, target_spaced_line: str, character_alignment):
+    def project(self, revised_target_line: str, character_alignment):
         raise NotImplementedError

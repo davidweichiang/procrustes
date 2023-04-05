@@ -1,3 +1,5 @@
+from typing import List, Tuple
+
 from utils.algorithms.data_structures.tree import Tree
 from utils.modes.alignment import Alignment
 
@@ -23,5 +25,5 @@ class TreeAlignment(Alignment):
     def get_characters(self):
         return self.characters
 
-    def project(self, target_spaced_line, character_alignment):
+    def project(self, revised_target_line: str, character_alignment: List[Tuple[int, int]]):
         raise NotImplementedError

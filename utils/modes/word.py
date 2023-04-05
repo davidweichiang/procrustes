@@ -64,10 +64,10 @@ class WordAlignment(Alignment):
     def get_characters(self):
         return self.source_characters
 
-    def project(self, target_spaced_line: str, character_alignment: List[Tuple[int, int]]):
+    def project(self, revised_target_line: str, character_alignment: List[Tuple[int, int]]):
         alignment = defaultdict(set)
         for source_character_index, target_character_index in character_alignment:
             alignment[target_character_index] |= self.alignment[source_character_index]
         self.alignment = alignment
-        self.source_characters = target_spaced_line
-        self.source_words = target_spaced_line.split()
+        self.source_characters = revised_target_line
+        self.source_words = revised_target_line.split()
