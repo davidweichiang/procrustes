@@ -1,0 +1,8 @@
+name: procrustes
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - natsort
+  - numpy
+prefix: C:\Users\sbjr1\anaconda3\envs\procrustes
